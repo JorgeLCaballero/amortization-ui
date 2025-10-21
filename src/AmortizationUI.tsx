@@ -466,7 +466,7 @@ export default function AmortizationUI() {
         </div>
 
         <p className="text-xs text-slate-500 mt-3">
-          Tip: con los valores por defecto (monto $1,750,000; tasa anual 11.7%; sistema francés; meses 120; seguros $1,050; gastos $175; IVA 0%) el **primer renglón** coincide con tu ejemplo: interés $17,062.50, amortización $7,742.36 y mensualidad sin accesorios $24,804.86.
+          Tip: con los valores por defecto (monto $0; tasa anual 11.7%; sistema francés; meses 120; seguros $1,050; gastos $175; IVA 0%) el **primer renglón** coincide con tu ejemplo: interés $17,062.50, amortización $7,742.36 y mensualidad sin accesorios $24,804.86.
         </p>
       </div>
     </div>
