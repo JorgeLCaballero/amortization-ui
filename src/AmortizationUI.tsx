@@ -424,7 +424,7 @@ export default function AmortizationUI() {
             <table className="min-w-full text-sm">
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
-                  <th className="px-3 py-2 text-left"># PAGO</th>
+                  <th className="px-3 py-2 text-left"># PAYMENT</th>
                   <th className="px-3 py-2 text-right">SALDO INSOLUTO</th>
                   <th className="px-3 py-2 text-right">INTERÉS</th>
                   <th className="px-3 py-2 text-right">IVA</th>
