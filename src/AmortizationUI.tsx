@@ -68,6 +68,21 @@ function toNumber(v: string) {
   return Number(cleaned);
 }
 
+function CreatorLogo() {
+  return (
+    <svg className="h-4 w-4 shrink-0" viewBox="0 0 32 32" role="img" aria-label="Creator logo">
+      <circle cx="16" cy="16" r="15" fill="#fff7ed" stroke="#111827" strokeWidth="1.4" />
+      <path d="M7 14.5C9.2 10.3 11.8 8 16 8s6.8 2.3 9 6.5" fill="#fbbf24" stroke="#111827" strokeWidth="1.5" />
+      <path d="M4.5 13.5c3.9-2.4 7.8-3.6 11.5-3.6s7.6 1.2 11.5 3.6c.7.4.6 1.6-.1 1.9-7.4 2.9-15.4 2.9-22.8 0-.7-.3-.8-1.5-.1-1.9Z" fill="#ef4444" stroke="#111827" strokeWidth="1.4" />
+      <path d="M6.5 14.5c6.3 2 12.7 2 19 0" fill="none" stroke="#16a34a" strokeWidth="1.4" />
+      <circle cx="16" cy="19" r="7.2" fill="#f59e0b" stroke="#111827" strokeWidth="1.4" />
+      <path d="M11.7 18.8c.7-.7 1.6-.7 2.3 0M18 18.8c.7-.7 1.6-.7 2.3 0" fill="none" stroke="#111827" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M13.1 22.3c1.6 1.4 4.2 1.4 5.8 0" fill="none" stroke="#111827" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M13 25.6l3-2 3 2" fill="#dc2626" stroke="#111827" strokeWidth="1.1" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 interface Row {
   pago: number;
   monthYear: string;
@@ -332,19 +347,21 @@ export default function AmortizationUI() {
       <div className="max-w-screen-2xl mx-auto p-6">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <h1 className="text-2xl font-semibold">Dynamic amortization schedule</h1>
-          <p className="text-sm font-medium text-slate-500 sm:text-right">Application created by Jorge Caballero</p>
+          <p className="flex items-center gap-2 text-sm font-medium text-slate-500 sm:text-right">
+            <span>Application created by Jorge Caballero</span>
+            <CreatorLogo />
+          </p>
         </div>
 
         <div className="grid gap-4 mb-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <div className="min-w-0 bg-white rounded-2xl shadow p-4">
             <label className="block text-sm text-slate-600 mb-1">Loan amount</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               className="w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={monto}
-              onChange={(e) => setMonto(e.target.value)}
-              min={0}
-              step="1000"
+              value={formatAmountInput(monto)}
+              onChange={(e) => setMonto(formatAmountInput(e.target.value))}
             />
           </div>
 
@@ -418,23 +435,21 @@ export default function AmortizationUI() {
               <div className="min-w-0">
                 <span className="text-xs text-slate-500">Insurance</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="w-full rounded-2xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={seguro}
-                  onChange={(e) => setSeguro(e.target.value)}
-                  min={0}
-                  step="1"
+                  value={formatAmountInput(seguro)}
+                  onChange={(e) => setSeguro(formatAmountInput(e.target.value))}
                 />
               </div>
               <div className="min-w-0">
                 <span className="text-xs text-slate-500">Admin fees</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="w-full rounded-2xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={gastos}
-                  onChange={(e) => setGastos(e.target.value)}
-                  min={0}
-                  step="1"
+                  value={formatAmountInput(gastos)}
+                  onChange={(e) => setGastos(formatAmountInput(e.target.value))}
                 />
               </div>
             </div>
@@ -537,8 +552,8 @@ export default function AmortizationUI() {
                 const datedRows = buildSchedule(1200, 0, 14, "frances", 0, 0, 0, "ninguno", 11, 2025);
                 console.assert(datedRows[0]?.monthYear === "November-2025", "[Test] Month & Year should start with the selected month and year");
                 console.assert(datedRows[2]?.monthYear === "January-2026", "[Test] Month & Year should roll over year boundaries");
-                console.assert(formatAmountInput("1000") === "1,000", "[Test] Prepayment input should format thousands with commas");
-                console.assert(toNumber("1,000,000") === 1000000, "[Test] Formatted prepayment input should parse as a number");
+                console.assert(formatAmountInput("1000") === "1,000", "[Test] Money inputs should format thousands with commas");
+                console.assert(toNumber("1,000,000") === 1000000, "[Test] Formatted money inputs should parse as numbers");
                 alert("Tests ran. Check the console (F12) for details.");
               }}
               className="mt-2 rounded-lg border px-2 py-1"
@@ -586,7 +601,6 @@ export default function AmortizationUI() {
                         inputMode="numeric"
                         className="w-44 text-right rounded-lg border border-slate-300 px-2 py-1"
                         value={formatAmountInput(prepagos[r.pago] ?? "")}
-                        min={0}
                         onChange={(e) => setPrepagos((prev) => ({ ...prev, [r.pago]: formatAmountInput(e.target.value) }))}
                       />
                     </td>
