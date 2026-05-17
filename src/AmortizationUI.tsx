@@ -319,11 +319,14 @@ export default function AmortizationUI() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
-      <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-2xl font-semibold mb-4">Dynamic amortization schedule</h1>
+      <div className="max-w-screen-2xl mx-auto p-6">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="text-2xl font-semibold">Dynamic amortization schedule</h1>
+          <p className="text-sm font-medium text-slate-500 sm:text-right">Application created by Jorge Caballero</p>
+        </div>
 
-        <div className="grid md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-2xl shadow p-4">
+        <div className="grid gap-4 mb-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="min-w-0 bg-white rounded-2xl shadow p-4">
             <label className="block text-sm text-slate-600 mb-1">Loan amount</label>
             <input
               type="number"
@@ -335,7 +338,7 @@ export default function AmortizationUI() {
             />
           </div>
 
-          <div className="bg-white rounded-2xl shadow p-4">
+          <div className="min-w-0 bg-white rounded-2xl shadow p-4">
             <label className="block text-sm text-slate-600 mb-1">Annual rate (%)</label>
             <input
               type="number"
@@ -348,7 +351,7 @@ export default function AmortizationUI() {
             <p className="text-xs text-slate-500 mt-1">Monthly approx. {(rate / 12).toFixed(3)}%</p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow p-4">
+          <div className="min-w-0 bg-white rounded-2xl shadow p-4">
             <label className="block text-sm text-slate-600 mb-1">Term (months)</label>
             <input
               type="number"
@@ -357,10 +360,10 @@ export default function AmortizationUI() {
               onChange={(e) => setMeses(e.target.value)}
               min={1}
             />
-            <div className="flex items-center gap-2 mt-2">
-              <label className="text-xs text-slate-600">System:</label>
+            <div className="mt-2 grid gap-1">
+              <label className="text-xs text-slate-600">System</label>
               <select
-                className="text-sm rounded-lg border border-slate-300 px-2 py-1"
+                className="w-full min-w-0 text-sm rounded-lg border border-slate-300 px-2 py-2"
                 value={sistema}
                 onChange={(e) => setSistema(e.target.value as Sistema)}
               >
@@ -370,13 +373,13 @@ export default function AmortizationUI() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow p-4">
+          <div className="min-w-0 bg-white rounded-2xl shadow p-4">
             <label className="block text-sm text-slate-600 mb-1">Credit start date</label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
                 <span className="text-xs text-slate-500">Month</span>
                 <select
-                  className="w-full text-sm rounded-xl border border-slate-300 px-2 py-2"
+                  className="w-full min-w-0 text-sm rounded-xl border border-slate-300 px-2 py-2"
                   value={String(scheduleStartMonth)}
                   onChange={(e) => setStartMonth(e.target.value)}
                 >
@@ -385,7 +388,7 @@ export default function AmortizationUI() {
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-xs text-slate-500">Year</span>
                 <input
                   type="number"
@@ -399,10 +402,10 @@ export default function AmortizationUI() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow p-4">
+          <div className="min-w-0 bg-white rounded-2xl shadow p-4 md:col-span-2 xl:col-span-1">
             <label className="block text-sm text-slate-600 mb-1">Fees (monthly)</label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
                 <span className="text-xs text-slate-500">Insurance</span>
                 <input
                   type="number"
@@ -413,7 +416,7 @@ export default function AmortizationUI() {
                   step="1"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-xs text-slate-500">Admin fees</span>
                 <input
                   type="number"
@@ -425,8 +428,8 @@ export default function AmortizationUI() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
+            <div className="grid gap-3 mt-3 sm:grid-cols-2">
+              <div className="min-w-0">
                 <span className="text-xs text-slate-500">VAT (%)</span>
                 <input
                   type="number"
@@ -437,10 +440,10 @@ export default function AmortizationUI() {
                   step="0.01"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-xs text-slate-500">VAT base</span>
                 <select
-                  className="w-full text-sm rounded-xl border border-slate-300 px-2 py-2"
+                  className="w-full min-w-0 text-sm rounded-xl border border-slate-300 px-2 py-2"
                   value={ivaBase}
                   onChange={(e) => setIvaBase(e.target.value as IvaBase)}
                 >
