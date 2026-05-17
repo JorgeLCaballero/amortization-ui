@@ -23,6 +23,10 @@ const mxn = new Intl.NumberFormat("es-MX", {
   maximumFractionDigits: 2,
 });
 
+const numberInputFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+});
+
 function roundMoney(n: number) {
   if (!isFinite(n)) return 0;
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -50,6 +54,12 @@ function formatMonthYear(startMonth: number, startYear: number, paymentNumber: n
 function formatCurrency(n: number) {
   if (!isFinite(n)) return "-";
   return mxn.format(roundMoney(n));
+}
+
+function formatAmountInput(v: string) {
+  const digits = v.toString().replace(/\D/g, "");
+  if (!digits) return "";
+  return numberInputFormatter.format(Number(digits));
 }
 
 function toNumber(v: string) {
@@ -527,6 +537,8 @@ export default function AmortizationUI() {
                 const datedRows = buildSchedule(1200, 0, 14, "frances", 0, 0, 0, "ninguno", 11, 2025);
                 console.assert(datedRows[0]?.monthYear === "November-2025", "[Test] Month & Year should start with the selected month and year");
                 console.assert(datedRows[2]?.monthYear === "January-2026", "[Test] Month & Year should roll over year boundaries");
+                console.assert(formatAmountInput("1000") === "1,000", "[Test] Prepayment input should format thousands with commas");
+                console.assert(toNumber("1,000,000") === 1000000, "[Test] Formatted prepayment input should parse as a number");
                 alert("Tests ran. Check the console (F12) for details.");
               }}
               className="mt-2 rounded-lg border px-2 py-1"
@@ -570,12 +582,12 @@ export default function AmortizationUI() {
                     <td className="px-3 py-2 text-right">{formatCurrency(r.pagoMensual)}</td>
                     <td className="px-3 py-2 text-right">
                       <input
-                        type="number"
-                        className="w-36 text-right rounded-lg border border-slate-300 px-2 py-1"
-                        value={prepagos[r.pago] ?? ""}
+                        type="text"
+                        inputMode="numeric"
+                        className="w-44 text-right rounded-lg border border-slate-300 px-2 py-1"
+                        value={formatAmountInput(prepagos[r.pago] ?? "")}
                         min={0}
-                        step="100"
-                        onChange={(e) => setPrepagos((prev) => ({ ...prev, [r.pago]: e.target.value }))}
+                        onChange={(e) => setPrepagos((prev) => ({ ...prev, [r.pago]: formatAmountInput(e.target.value) }))}
                       />
                     </td>
                     <td className="px-3 py-2 text-right">{formatCurrency(r.totalCashFlow)}</td>
