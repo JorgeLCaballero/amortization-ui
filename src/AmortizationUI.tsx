@@ -207,16 +207,16 @@ export default function AmortizationUI() {
 
   function descargarCSV() {
     const header = [
-      "# PAGO",
-      "SALDO INSOLUTO",
-      "INTERÉS",
-      "IVA",
-      "AMORTIZACIÓN",
-      "MENSUALIDAD SIN ACCESORIOS",
-      "SEGUROS DE VIDA Y DAÑOS",
-      "GASTOS ADMINISTRACION",
-      "PAGO MENSUAL",
-      "PAGO ANTICIPADO",
+      "# PAYMENT",
+      "OUTSTANDING BALANCE",
+      "INTEREST",
+      "VAT",
+      "PRINCIPAL",
+      "PAYMENT BEFORE FEES",
+      "LIFE AND PROPERTY INSURANCE",
+      "ADMIN FEES",
+      "MONTHLY PAYMENT",
+      "PREPAYMENT",
     ];
 
     const lines = rows.map((r) => [
@@ -238,7 +238,7 @@ export default function AmortizationUI() {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "tabla_amortizacion.csv";
+    a.download = "amortization_schedule.csv";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -246,11 +246,11 @@ export default function AmortizationUI() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
       <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-2xl font-semibold mb-4">Tabla de amortización dinámica</h1>
+        <h1 className="text-2xl font-semibold mb-4">Dynamic amortization schedule</h1>
 
         <div className="grid md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-2xl shadow p-4">
-            <label className="block text-sm text-slate-600 mb-1">Monto del préstamo</label>
+            <label className="block text-sm text-slate-600 mb-1">Loan amount</label>
             <input
               type="number"
               className="w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -262,7 +262,7 @@ export default function AmortizationUI() {
           </div>
 
           <div className="bg-white rounded-2xl shadow p-4">
-            <label className="block text-sm text-slate-600 mb-1">Tasa anual (%)</label>
+            <label className="block text-sm text-slate-600 mb-1">Annual rate (%)</label>
             <input
               type="number"
               className="w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -271,11 +271,11 @@ export default function AmortizationUI() {
               min={0}
               step="0.01"
             />
-            <p className="text-xs text-slate-500 mt-1">Mensual ≈ {(Number(tasa) / 12).toFixed(3)}%</p>
+            <p className="text-xs text-slate-500 mt-1">Monthly approx. {(Number(tasa) / 12).toFixed(3)}%</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow p-4">
-            <label className="block text-sm text-slate-600 mb-1">Meses</label>
+            <label className="block text-sm text-slate-600 mb-1">Term (months)</label>
             <input
               type="number"
               className="w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -284,23 +284,23 @@ export default function AmortizationUI() {
               min={1}
             />
             <div className="flex items-center gap-2 mt-2">
-              <label className="text-xs text-slate-600">Sistema:</label>
+              <label className="text-xs text-slate-600">System:</label>
               <select
                 className="text-sm rounded-lg border border-slate-300 px-2 py-1"
                 value={sistema}
                 onChange={(e) => setSistema(e.target.value as Sistema)}
               >
-                <option value="frances">Francés (pago fijo)</option>
-                <option value="aleman">Alemán (amortización fija)</option>
+                <option value="frances">French (fixed payment)</option>
+                <option value="aleman">German (fixed principal)</option>
               </select>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl shadow p-4">
-            <label className="block text-sm text-slate-600 mb-1">Accesorios (mensuales)</label>
+            <label className="block text-sm text-slate-600 mb-1">Fees (monthly)</label>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="text-xs text-slate-500">Seguros</span>
+                <span className="text-xs text-slate-500">Insurance</span>
                 <input
                   type="number"
                   className="w-full rounded-2xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -311,7 +311,7 @@ export default function AmortizationUI() {
                 />
               </div>
               <div>
-                <span className="text-xs text-slate-500">Gastos Adm.</span>
+                <span className="text-xs text-slate-500">Admin fees</span>
                 <input
                   type="number"
                   className="w-full rounded-2xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -324,7 +324,7 @@ export default function AmortizationUI() {
             </div>
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div>
-                <span className="text-xs text-slate-500">IVA (%)</span>
+                <span className="text-xs text-slate-500">VAT (%)</span>
                 <input
                   type="number"
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -335,15 +335,15 @@ export default function AmortizationUI() {
                 />
               </div>
               <div>
-                <span className="text-xs text-slate-500">Base IVA</span>
+                <span className="text-xs text-slate-500">VAT base</span>
                 <select
                   className="w-full text-sm rounded-xl border border-slate-300 px-2 py-2"
                   value={ivaBase}
                   onChange={(e) => setIvaBase(e.target.value as IvaBase)}
                 >
-                  <option value="ninguno">Ninguno</option>
-                  <option value="accesorios">Accesorios</option>
-                  <option value="interes+accesorios">Interés + Accesorios</option>
+                  <option value="ninguno">None</option>
+                  <option value="accesorios">Fees</option>
+                  <option value="interes+accesorios">Interest + fees</option>
                 </select>
               </div>
             </div>
@@ -353,35 +353,35 @@ export default function AmortizationUI() {
         <div className="bg-white rounded-2xl shadow p-4 mb-6">
           <div className="grid md:grid-cols-8 gap-4 text-sm">
             <div>
-              <div className="text-slate-500">Saldo inicial</div>
+              <div className="text-slate-500">Opening balance</div>
               <div className="font-semibold">{formatCurrency(P)}</div>
             </div>
             <div>
-              <div className="text-slate-500">Total intereses</div>
+              <div className="text-slate-500">Total interest</div>
               <div className="font-semibold">{formatCurrency(totales.interes)}</div>
             </div>
             <div>
-              <div className="text-slate-500">Total amortización</div>
+              <div className="text-slate-500">Total principal</div>
               <div className="font-semibold">{formatCurrency(totales.amort)}</div>
             </div>
             <div>
-              <div className="text-slate-500">Accesorios + IVA</div>
+              <div className="text-slate-500">Fees + VAT</div>
               <div className="font-semibold">{formatCurrency(totales.seguro + totales.gastos + totales.iva)}</div>
             </div>
             <div>
-              <div className="text-slate-500">Total pagado</div>
+              <div className="text-slate-500">Total paid</div>
               <div className="font-semibold">{formatCurrency(totales.pago)}</div>
             </div>
             <div>
-              <div className="text-slate-500">Total prepagos</div>
+              <div className="text-slate-500">Total prepayments</div>
               <div className="font-semibold">{formatCurrency(totales.prepago)}</div>
             </div>
             <div>
-              <div className="text-slate-500">Meses efectivos</div>
+              <div className="text-slate-500">Effective months</div>
               <div className="font-semibold">{rows.length}</div>
             </div>
             <div>
-              <div className="text-slate-500">Intereses ahorrados (prepagos)</div>
+              <div className="text-slate-500">Interest saved (prepayments)</div>
               <div className="font-semibold">{formatCurrency(interesesAhorrados)}</div>
             </div>
           </div>
@@ -391,13 +391,13 @@ export default function AmortizationUI() {
             onClick={descargarCSV}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white text-sm px-4 py-2 shadow hover:bg-indigo-700"
           >
-            Descargar CSV
+            Download CSV
           </button>
-          <div className="text-xs text-slate-500">Los importes se redondean a 2 decimales para mostrar.</div>
+          <div className="text-xs text-slate-500">Amounts are rounded to 2 decimal places for display.</div>
         </div>
 
         <details className="mb-4">
-          <summary className="cursor-pointer text-xs text-slate-500">Tests rápidos (dev)</summary>
+          <summary className="cursor-pointer text-xs text-slate-500">Quick tests (dev)</summary>
           <div className="text-xs text-slate-600 mt-2">
             <button
               onClick={() => {
@@ -405,16 +405,16 @@ export default function AmortizationUI() {
                 const baseInteres = base.reduce((a, r) => a + r.interes, 0);
                 const con0 = buildSchedule(P, rate, n, sistema, toNumber(seguro), toNumber(gastos), Number(ivaPct), ivaBase, {});
                 const con0Interes = con0.reduce((a, r) => a + r.interes, 0);
-                console.assert(Math.abs(baseInteres - con0Interes) < 1e-6, "[Test] Sin prepagos el interés debe ser igual");
+                console.assert(Math.abs(baseInteres - con0Interes) < 1e-6, "[Test] Without prepayments, interest should stay the same");
                 const conPrep = buildSchedule(P, rate, n, sistema, toNumber(seguro), toNumber(gastos), Number(ivaPct), ivaBase, { 1: 10000 });
                 const conPrepInteres = conPrep.reduce((a, r) => a + r.interes, 0);
-                console.assert(conPrepInteres <= baseInteres, "[Test] Con prepago el interés total no debe aumentar");
-                console.assert(conPrep.length <= base.length, "[Test] Con prepago los meses efectivos no deben aumentar");
-                alert("Tests ejecutados. Revisa la consola (F12) para detalles.");
+                console.assert(conPrepInteres <= baseInteres, "[Test] With a prepayment, total interest should not increase");
+                console.assert(conPrep.length <= base.length, "[Test] With a prepayment, effective months should not increase");
+                alert("Tests ran. Check the console (F12) for details.");
               }}
               className="mt-2 rounded-lg border px-2 py-1"
             >
-              Ejecutar tests
+              Run tests
             </button>
           </div>
         </details>
@@ -425,15 +425,15 @@ export default function AmortizationUI() {
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="px-3 py-2 text-left"># PAYMENT</th>
-                  <th className="px-3 py-2 text-right">SALDO INSOLUTO</th>
-                  <th className="px-3 py-2 text-right">INTERÉS</th>
-                  <th className="px-3 py-2 text-right">IVA</th>
-                  <th className="px-3 py-2 text-right">AMORTIZACIÓN</th>
-                  <th className="px-3 py-2 text-right">MENSUALIDAD SIN ACCESORIOS</th>
-                  <th className="px-3 py-2 text-right">SEGUROS DE VIDA Y DAÑOS</th>
-                  <th className="px-3 py-2 text-right">GASTOS ADMINISTRACION</th>
-                  <th className="px-3 py-2 text-right">PAGO MENSUAL</th>
-                  <th className="px-3 py-2 text-right">PAGO ANTICIPADO</th>
+                  <th className="px-3 py-2 text-right">OUTSTANDING BALANCE</th>
+                  <th className="px-3 py-2 text-right">INTEREST</th>
+                  <th className="px-3 py-2 text-right">VAT</th>
+                  <th className="px-3 py-2 text-right">PRINCIPAL</th>
+                  <th className="px-3 py-2 text-right">PAYMENT BEFORE FEES</th>
+                  <th className="px-3 py-2 text-right">LIFE AND PROPERTY INSURANCE</th>
+                  <th className="px-3 py-2 text-right">ADMIN FEES</th>
+                  <th className="px-3 py-2 text-right">MONTHLY PAYMENT</th>
+                  <th className="px-3 py-2 text-right">PREPAYMENT</th>
                 </tr>
               </thead>
               <tbody>
