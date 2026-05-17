@@ -8,9 +8,18 @@ const mxn = new Intl.NumberFormat("es-MX", {
   maximumFractionDigits: 2,
 });
 
+function roundMoney(n: number) {
+  if (!isFinite(n)) return 0;
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function nonNegative(n: number) {
+  return isFinite(n) ? Math.max(0, n) : 0;
+}
+
 function formatCurrency(n: number) {
   if (!isFinite(n)) return "-";
-  return mxn.format(Math.round(n * 100) / 100);
+  return mxn.format(roundMoney(n));
 }
 
 function toNumber(v: string) {
@@ -30,6 +39,7 @@ interface Row {
   gastos: number;
   pagoMensual: number;
   prepago: number;
+  totalCashFlow: number;
 }
 
 type Sistema = "frances" | "aleman";
@@ -47,60 +57,74 @@ function buildSchedule(
   ivaBase: IvaBase,
   prepagos?: Record<number, number>
 ): Row[] {
-  const r = annualRatePct / 100 / 12;
-  let saldo = principal;
+  const principalAmount = roundMoney(nonNegative(principal));
+  const termMonths = Math.max(1, Math.floor(nonNegative(months)));
+  const monthlyRate = nonNegative(annualRatePct) / 100 / 12;
+  const insurance = roundMoney(nonNegative(seguroMensual));
+  const adminFees = roundMoney(nonNegative(gastosMensuales));
+  const vatRate = nonNegative(ivaPct) / 100;
+
+  let saldo = principalAmount;
   const rows: Row[] = [];
 
-  const pagoFijo =
-    sistema === "frances" && r > 0
-      ? (principal * r) / (1 - Math.pow(1 + r, -months))
+  const fixedPayment =
+    sistema === "frances"
+      ? roundMoney(
+          monthlyRate > 0
+            ? (principalAmount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -termMonths))
+            : principalAmount / termMonths
+        )
       : 0;
-  const amortFija = sistema === "aleman" ? principal / months : 0;
+  const fixedPrincipal = sistema === "aleman" ? roundMoney(principalAmount / termMonths) : 0;
 
-  for (let k = 1; k <= months; k++) {
+  for (let k = 1; k <= termMonths; k++) {
     if (saldo <= 0) break;
 
-    const interes = saldo * r;
-    let mensualidadSinAcc = 0;
-    let amort = 0;
+    const openingBalance = roundMoney(saldo);
+    const interest = roundMoney(openingBalance * monthlyRate);
+    let paymentBeforeFees = 0;
+    let principalPayment = 0;
 
     if (sistema === "frances") {
-      mensualidadSinAcc = pagoFijo;
-      amort = mensualidadSinAcc - interes;
-      if (amort < 0) amort = 0;
+      paymentBeforeFees = fixedPayment;
+      principalPayment = roundMoney(paymentBeforeFees - interest);
+      if (principalPayment < 0) principalPayment = 0;
     } else {
-      amort = amortFija;
-      mensualidadSinAcc = interes + amort;
+      principalPayment = fixedPrincipal;
+      paymentBeforeFees = roundMoney(interest + principalPayment);
     }
 
-    let prepago = Math.max(0, Math.min(prepagos?.[k] ?? 0, Math.max(0, saldo - amort)));
-
-    if (amort + prepago > saldo) {
-      amort = Math.max(0, saldo - prepago);
-      mensualidadSinAcc = interes + amort;
+    if (k === termMonths || principalPayment > openingBalance) {
+      principalPayment = openingBalance;
+      paymentBeforeFees = roundMoney(interest + principalPayment);
     }
 
-    let baseIVA = 0;
-    if (ivaBase === "accesorios") baseIVA = seguroMensual + gastosMensuales;
-    if (ivaBase === "interes+accesorios") baseIVA = interes + seguroMensual + gastosMensuales;
-    const iva = (ivaPct / 100) * baseIVA;
+    const maxPrepayment = Math.max(0, roundMoney(openingBalance - principalPayment));
+    const prepayment = roundMoney(Math.min(nonNegative(prepagos?.[k] ?? 0), maxPrepayment));
 
-    const pagoMensual = mensualidadSinAcc + seguroMensual + gastosMensuales + iva;
+    let vatBase = 0;
+    if (ivaBase === "accesorios") vatBase = insurance + adminFees;
+    if (ivaBase === "interes+accesorios") vatBase = interest + insurance + adminFees;
+    const vat = roundMoney(vatRate * vatBase);
+
+    const monthlyPayment = roundMoney(paymentBeforeFees + insurance + adminFees + vat);
+    const totalCashFlow = roundMoney(monthlyPayment + prepayment);
 
     rows.push({
       pago: k,
-      saldo,
-      interes,
-      iva,
-      amort,
-      mensualidadSinAcc,
-      seguros: seguroMensual,
-      gastos: gastosMensuales,
-      pagoMensual,
-      prepago,
+      saldo: openingBalance,
+      interes: interest,
+      iva: vat,
+      amort: principalPayment,
+      mensualidadSinAcc: paymentBeforeFees,
+      seguros: insurance,
+      gastos: adminFees,
+      pagoMensual: monthlyPayment,
+      prepago: prepayment,
+      totalCashFlow,
     });
 
-    saldo = Math.max(0, saldo - amort - prepago);
+    saldo = roundMoney(openingBalance - principalPayment - prepayment);
   }
 
   return rows;
@@ -146,11 +170,11 @@ export default function AmortizationUI() {
     try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
   }, [hydrated, monto, tasa, meses, sistema, seguro, gastos, ivaPct, ivaBase, prepagos]);
 
-  const P = toNumber(monto);
-  const n = Math.max(1, Math.floor(toNumber(meses)));
-  const rate = Number(tasa);
+  const P = nonNegative(toNumber(monto));
+  const n = Math.max(1, Math.floor(nonNegative(toNumber(meses))));
+  const rate = nonNegative(Number(tasa));
   const prepagosNum = useMemo(() => {
-    const entries = Object.entries(prepagos).map(([k, v]) => [Number(k), toNumber(v)] as const);
+    const entries = Object.entries(prepagos).map(([k, v]) => [Number(k), nonNegative(toNumber(v))] as const);
     return Object.fromEntries(entries);
   }, [prepagos]);
 
@@ -178,7 +202,7 @@ export default function AmortizationUI() {
         acc.amort += r.amort;
         acc.seguro += r.seguros;
         acc.gastos += r.gastos;
-        acc.pago += r.pagoMensual;
+        acc.pago += r.totalCashFlow;
         acc.prepago += r.prepago;
         return acc;
       },
@@ -202,7 +226,7 @@ export default function AmortizationUI() {
   );
 
   const interesesBase = useMemo(() => rowsBase.reduce((acc, r) => acc + r.interes, 0), [rowsBase]);
-  const interesesAhorrados = Math.max(0, interesesBase - totales.interes);
+  const interesesAhorrados = Math.max(0, roundMoney(interesesBase - totales.interes));
   const mesesAhorrados = Math.max(0, rowsBase.length - rows.length);
 
   function descargarCSV() {
@@ -217,6 +241,7 @@ export default function AmortizationUI() {
       "ADMIN FEES",
       "MONTHLY PAYMENT",
       "PREPAYMENT",
+      "TOTAL CASH FLOW",
     ];
 
     const lines = rows.map((r) => [
@@ -230,6 +255,7 @@ export default function AmortizationUI() {
       r.gastos,
       r.pagoMensual,
       r.prepago,
+      r.totalCashFlow,
     ]);
 
     const csv = [header.join(","), ...lines.map((l) => l.join(","))].join("\n");
@@ -271,7 +297,7 @@ export default function AmortizationUI() {
               min={0}
               step="0.01"
             />
-            <p className="text-xs text-slate-500 mt-1">Monthly approx. {(Number(tasa) / 12).toFixed(3)}%</p>
+            <p className="text-xs text-slate-500 mt-1">Monthly approx. {(rate / 12).toFixed(3)}%</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow p-4">
@@ -351,7 +377,7 @@ export default function AmortizationUI() {
         </div>
 
         <div className="bg-white rounded-2xl shadow p-4 mb-6">
-          <div className="grid md:grid-cols-8 gap-4 text-sm">
+          <div className="grid md:grid-cols-9 gap-4 text-sm">
             <div>
               <div className="text-slate-500">Opening balance</div>
               <div className="font-semibold">{formatCurrency(P)}</div>
@@ -381,6 +407,10 @@ export default function AmortizationUI() {
               <div className="font-semibold">{rows.length}</div>
             </div>
             <div>
+              <div className="text-slate-500">Months saved</div>
+              <div className="font-semibold">{mesesAhorrados}</div>
+            </div>
+            <div>
               <div className="text-slate-500">Interest saved (prepayments)</div>
               <div className="font-semibold">{formatCurrency(interesesAhorrados)}</div>
             </div>
@@ -393,7 +423,7 @@ export default function AmortizationUI() {
           >
             Download CSV
           </button>
-          <div className="text-xs text-slate-500">Amounts are rounded to 2 decimal places for display.</div>
+          <div className="text-xs text-slate-500">Amounts are rounded to cents per period.</div>
         </div>
 
         <details className="mb-4">
@@ -410,6 +440,10 @@ export default function AmortizationUI() {
                 const conPrepInteres = conPrep.reduce((a, r) => a + r.interes, 0);
                 console.assert(conPrepInteres <= baseInteres, "[Test] With a prepayment, total interest should not increase");
                 console.assert(conPrep.length <= base.length, "[Test] With a prepayment, effective months should not increase");
+                const zeroRateFrench = buildSchedule(1200, 0, 12, "frances", 0, 0, 0, "ninguno");
+                console.assert(zeroRateFrench.length === 12, "[Test] A 0% French loan should still amortize across the term");
+                console.assert(zeroRateFrench.every((r) => r.interes === 0 && r.amort === 100), "[Test] A 0% French loan should split principal evenly");
+                console.assert(rows.every((r) => r.totalCashFlow === roundMoney(r.pagoMensual + r.prepago)), "[Test] Total cash flow should equal monthly payment plus prepayment");
                 alert("Tests ran. Check the console (F12) for details.");
               }}
               className="mt-2 rounded-lg border px-2 py-1"
@@ -434,6 +468,7 @@ export default function AmortizationUI() {
                   <th className="px-3 py-2 text-right">ADMIN FEES</th>
                   <th className="px-3 py-2 text-right">MONTHLY PAYMENT</th>
                   <th className="px-3 py-2 text-right">PREPAYMENT</th>
+                  <th className="px-3 py-2 text-right">TOTAL CASH FLOW</th>
                 </tr>
               </thead>
               <tbody>
@@ -458,6 +493,7 @@ export default function AmortizationUI() {
                         onChange={(e) => setPrepagos((prev) => ({ ...prev, [r.pago]: e.target.value }))}
                       />
                     </td>
+                    <td className="px-3 py-2 text-right">{formatCurrency(r.totalCashFlow)}</td>
                   </tr>
                 ))}
               </tbody>
