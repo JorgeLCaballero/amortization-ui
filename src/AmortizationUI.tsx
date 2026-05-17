@@ -1,6 +1,21 @@
 import React, { useMemo, useState, useEffect } from "react";
 
 const LS_KEY = "amortization-ui-state-v1";
+const DEFAULT_START_YEAR = 2026;
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 const mxn = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -17,6 +32,21 @@ function nonNegative(n: number) {
   return isFinite(n) ? Math.max(0, n) : 0;
 }
 
+function normalizeMonth(month: number) {
+  return Math.min(12, Math.max(1, Math.floor(nonNegative(month)) || 1));
+}
+
+function normalizeYear(year: number) {
+  return Math.floor(nonNegative(year)) || DEFAULT_START_YEAR;
+}
+
+function formatMonthYear(startMonth: number, startYear: number, paymentNumber: number) {
+  const monthIndex = normalizeMonth(startMonth) - 1 + Math.max(0, paymentNumber - 1);
+  const year = normalizeYear(startYear) + Math.floor(monthIndex / 12);
+  const month = MONTH_NAMES[monthIndex % 12];
+  return `${month}-${year}`;
+}
+
 function formatCurrency(n: number) {
   if (!isFinite(n)) return "-";
   return mxn.format(roundMoney(n));
@@ -30,6 +60,7 @@ function toNumber(v: string) {
 
 interface Row {
   pago: number;
+  monthYear: string;
   saldo: number;
   interes: number;
   iva: number;
@@ -55,6 +86,8 @@ function buildSchedule(
   gastosMensuales: number,
   ivaPct: number,
   ivaBase: IvaBase,
+  startMonth = 1,
+  startYear = DEFAULT_START_YEAR,
   prepagos?: Record<number, number>
 ): Row[] {
   const principalAmount = roundMoney(nonNegative(principal));
@@ -63,6 +96,8 @@ function buildSchedule(
   const insurance = roundMoney(nonNegative(seguroMensual));
   const adminFees = roundMoney(nonNegative(gastosMensuales));
   const vatRate = nonNegative(ivaPct) / 100;
+  const scheduleStartMonth = normalizeMonth(startMonth);
+  const scheduleStartYear = normalizeYear(startYear);
 
   let saldo = principalAmount;
   const rows: Row[] = [];
@@ -112,6 +147,7 @@ function buildSchedule(
 
     rows.push({
       pago: k,
+      monthYear: formatMonthYear(scheduleStartMonth, scheduleStartYear, k),
       saldo: openingBalance,
       interes: interest,
       iva: vat,
@@ -135,6 +171,8 @@ export default function AmortizationUI() {
   const [tasa, setTasa] = useState<string>("11.7");
   const [meses, setMeses] = useState<string>("120");
   const [sistema, setSistema] = useState<Sistema>("frances");
+  const [startMonth, setStartMonth] = useState<string>("1");
+  const [startYear, setStartYear] = useState<string>(String(DEFAULT_START_YEAR));
 
   const [seguro, setSeguro] = useState<string>("1050");
   const [gastos, setGastos] = useState<string>("175");
@@ -153,6 +191,8 @@ export default function AmortizationUI() {
           if (s.tasa !== undefined) setTasa(String(s.tasa));
           if (s.meses !== undefined) setMeses(String(s.meses));
           if (s.sistema !== undefined) setSistema(s.sistema as Sistema);
+          if (s.startMonth !== undefined) setStartMonth(String(normalizeMonth(Number(s.startMonth))));
+          if (s.startYear !== undefined) setStartYear(String(normalizeYear(Number(s.startYear))));
           if (s.seguro !== undefined) setSeguro(String(s.seguro));
           if (s.gastos !== undefined) setGastos(String(s.gastos));
           if (s.ivaPct !== undefined) setIvaPct(String(s.ivaPct));
@@ -166,13 +206,15 @@ export default function AmortizationUI() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const data = { monto, tasa, meses, sistema, seguro, gastos, ivaPct, ivaBase, prepagos };
+    const data = { monto, tasa, meses, sistema, startMonth, startYear, seguro, gastos, ivaPct, ivaBase, prepagos };
     try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
-  }, [hydrated, monto, tasa, meses, sistema, seguro, gastos, ivaPct, ivaBase, prepagos]);
+  }, [hydrated, monto, tasa, meses, sistema, startMonth, startYear, seguro, gastos, ivaPct, ivaBase, prepagos]);
 
   const P = nonNegative(toNumber(monto));
   const n = Math.max(1, Math.floor(nonNegative(toNumber(meses))));
   const rate = nonNegative(Number(tasa));
+  const scheduleStartMonth = normalizeMonth(Number(startMonth));
+  const scheduleStartYear = normalizeYear(Number(startYear));
   const prepagosNum = useMemo(() => {
     const entries = Object.entries(prepagos).map(([k, v]) => [Number(k), nonNegative(toNumber(v))] as const);
     return Object.fromEntries(entries);
@@ -189,9 +231,11 @@ export default function AmortizationUI() {
         toNumber(gastos),
         Number(ivaPct),
         ivaBase,
+        scheduleStartMonth,
+        scheduleStartYear,
         prepagosNum
       ),
-    [P, rate, n, sistema, seguro, gastos, ivaPct, ivaBase, prepagosNum]
+    [P, rate, n, sistema, seguro, gastos, ivaPct, ivaBase, scheduleStartMonth, scheduleStartYear, prepagosNum]
   );
 
   const totales = useMemo(() => {
@@ -220,9 +264,11 @@ export default function AmortizationUI() {
         toNumber(seguro),
         toNumber(gastos),
         Number(ivaPct),
-        ivaBase
+        ivaBase,
+        scheduleStartMonth,
+        scheduleStartYear
       ),
-    [P, rate, n, sistema, seguro, gastos, ivaPct, ivaBase]
+    [P, rate, n, sistema, seguro, gastos, ivaPct, ivaBase, scheduleStartMonth, scheduleStartYear]
   );
 
   const interesesBase = useMemo(() => rowsBase.reduce((acc, r) => acc + r.interes, 0), [rowsBase]);
@@ -232,6 +278,7 @@ export default function AmortizationUI() {
   function descargarCSV() {
     const header = [
       "# PAYMENT",
+      "MONTH & YEAR",
       "OUTSTANDING BALANCE",
       "INTEREST",
       "VAT",
@@ -246,6 +293,7 @@ export default function AmortizationUI() {
 
     const lines = rows.map((r) => [
       r.pago,
+      r.monthYear,
       r.saldo,
       r.interes,
       r.iva,
@@ -274,7 +322,7 @@ export default function AmortizationUI() {
       <div className="max-w-7xl mx-auto p-6">
         <h1 className="text-2xl font-semibold mb-4">Dynamic amortization schedule</h1>
 
-        <div className="grid md:grid-cols-4 gap-4 mb-6">
+        <div className="grid md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-2xl shadow p-4">
             <label className="block text-sm text-slate-600 mb-1">Loan amount</label>
             <input
@@ -319,6 +367,35 @@ export default function AmortizationUI() {
                 <option value="frances">French (fixed payment)</option>
                 <option value="aleman">German (fixed principal)</option>
               </select>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-4">
+            <label className="block text-sm text-slate-600 mb-1">Credit start date</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-xs text-slate-500">Month</span>
+                <select
+                  className="w-full text-sm rounded-xl border border-slate-300 px-2 py-2"
+                  value={String(scheduleStartMonth)}
+                  onChange={(e) => setStartMonth(e.target.value)}
+                >
+                  {MONTH_NAMES.map((month, index) => (
+                    <option key={month} value={index + 1}>{month}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500">Year</span>
+                <input
+                  type="number"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={startYear}
+                  onChange={(e) => setStartYear(e.target.value)}
+                  min={1900}
+                  step="1"
+                />
+              </div>
             </div>
           </div>
 
@@ -431,19 +508,22 @@ export default function AmortizationUI() {
           <div className="text-xs text-slate-600 mt-2">
             <button
               onClick={() => {
-                const base = buildSchedule(P, rate, n, sistema, toNumber(seguro), toNumber(gastos), Number(ivaPct), ivaBase);
+                const base = buildSchedule(P, rate, n, sistema, toNumber(seguro), toNumber(gastos), Number(ivaPct), ivaBase, scheduleStartMonth, scheduleStartYear);
                 const baseInteres = base.reduce((a, r) => a + r.interes, 0);
-                const con0 = buildSchedule(P, rate, n, sistema, toNumber(seguro), toNumber(gastos), Number(ivaPct), ivaBase, {});
+                const con0 = buildSchedule(P, rate, n, sistema, toNumber(seguro), toNumber(gastos), Number(ivaPct), ivaBase, scheduleStartMonth, scheduleStartYear, {});
                 const con0Interes = con0.reduce((a, r) => a + r.interes, 0);
                 console.assert(Math.abs(baseInteres - con0Interes) < 1e-6, "[Test] Without prepayments, interest should stay the same");
-                const conPrep = buildSchedule(P, rate, n, sistema, toNumber(seguro), toNumber(gastos), Number(ivaPct), ivaBase, { 1: 10000 });
+                const conPrep = buildSchedule(P, rate, n, sistema, toNumber(seguro), toNumber(gastos), Number(ivaPct), ivaBase, scheduleStartMonth, scheduleStartYear, { 1: 10000 });
                 const conPrepInteres = conPrep.reduce((a, r) => a + r.interes, 0);
                 console.assert(conPrepInteres <= baseInteres, "[Test] With a prepayment, total interest should not increase");
                 console.assert(conPrep.length <= base.length, "[Test] With a prepayment, effective months should not increase");
-                const zeroRateFrench = buildSchedule(1200, 0, 12, "frances", 0, 0, 0, "ninguno");
+                const zeroRateFrench = buildSchedule(1200, 0, 12, "frances", 0, 0, 0, "ninguno", 1, 2026);
                 console.assert(zeroRateFrench.length === 12, "[Test] A 0% French loan should still amortize across the term");
                 console.assert(zeroRateFrench.every((r) => r.interes === 0 && r.amort === 100), "[Test] A 0% French loan should split principal evenly");
                 console.assert(rows.every((r) => r.totalCashFlow === roundMoney(r.pagoMensual + r.prepago)), "[Test] Total cash flow should equal monthly payment plus prepayment");
+                const datedRows = buildSchedule(1200, 0, 14, "frances", 0, 0, 0, "ninguno", 11, 2025);
+                console.assert(datedRows[0]?.monthYear === "November-2025", "[Test] Month & Year should start with the selected month and year");
+                console.assert(datedRows[2]?.monthYear === "January-2026", "[Test] Month & Year should roll over year boundaries");
                 alert("Tests ran. Check the console (F12) for details.");
               }}
               className="mt-2 rounded-lg border px-2 py-1"
@@ -459,6 +539,7 @@ export default function AmortizationUI() {
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="px-3 py-2 text-left"># PAYMENT</th>
+                  <th className="px-3 py-2 text-left">MONTH & YEAR</th>
                   <th className="px-3 py-2 text-right">OUTSTANDING BALANCE</th>
                   <th className="px-3 py-2 text-right">INTEREST</th>
                   <th className="px-3 py-2 text-right">VAT</th>
@@ -475,6 +556,7 @@ export default function AmortizationUI() {
                 {rows.map((r) => (
                   <tr key={r.pago} className={r.pago % 2 === 0 ? "bg-white" : "bg-slate-50"}>
                     <td className="px-3 py-2">{r.pago}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{r.monthYear}</td>
                     <td className="px-3 py-2 text-right">{formatCurrency(r.saldo)}</td>
                     <td className="px-3 py-2 text-right">{formatCurrency(r.interes)}</td>
                     <td className="px-3 py-2 text-right">{formatCurrency(r.iva)}</td>
